@@ -95,13 +95,13 @@ contract UqChannel {
         bytes calldata bobSig
     ) external {
         Channel storage channel = channels[id];
+        require(newAliBalance + newBobBalance == channel.ali.balance + channel.bob.balance, "UqChannel: balances must add up");
+        require(channel.messageId < messageId, "UqChannel: must advance the state");
 
         bytes memory message = abi.encodePacked(id, messageId, newAliBalance, newBobBalance, newState);
         require(ECDSA.recover(keccak256(message), aliSig) == channel.ali.channelKey, "UqChannel: invalid ali signature");
         require(ECDSA.recover(keccak256(message), bobSig) == channel.bob.channelKey, "UqChannel: invalid bob signature");
 
-        require(channel.messageId < messageId, "UqChannel: must advance the state");
-        
         channel.ali.balance = newAliBalance;
         channel.bob.balance = newBobBalance;
         channel.messageId = messageId;
