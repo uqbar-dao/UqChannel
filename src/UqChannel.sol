@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { ECDSA } from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 uint256 constant CHALLENGE_PERIOD = 5 minutes;
