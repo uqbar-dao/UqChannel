@@ -36,15 +36,16 @@ contract UqChannel {
         uint256 bobBalance
     );
 
-    struct Participant {
-        address participant;
-        address channelKey;
-        uint256 balance;
-    }
-
     struct Channel {
-        Participant ali;
-        Participant bob;
+        // alice data
+        address ali;
+        address aliChannelKey;
+        uint256 aliBalance;
+        // bob data
+        address bob;
+        address bobChannelKey;
+        uint256 bobBalance;
+        // shared data
         IERC20 token;
         uint256 messageId;
         bytes32 stateHash;
@@ -53,17 +54,29 @@ contract UqChannel {
 
     mapping(uint256 => Channel) public channels;
 
-    function makeChannel(Participant calldata ali, Participant calldata bob, IERC20 token) external returns (uint256) {
+    function makeChannel(
+        address ali,
+        address aliChannelKey,
+        uint256 aliBalance,
+        address bob,
+        address bobChannelKey,
+        uint256 bobBalance,
+        IERC20 token
+    ) external returns (uint256) {
         /// TODO transferFrom tokens from ali and bob
-        require(token.transferFrom(ali.participant, address(this), ali.balance), "ali transfer failed");
-        require(token.transferFrom(bob.participant, address(this), bob.balance), "bob transfer failed");
+        require(token.transferFrom(ali, address(this), aliBalance), "ali transfer failed");
+        require(token.transferFrom(bob, address(this), bobBalance), "bob transfer failed");
 
         // NOTE this is unique so long as you use new channel keys each new channel (you should)
-        uint256 id = uint256(keccak256(abi.encodePacked(ali.participant, bob.participant, ali.channelKey, bob.channelKey)));
+        uint256 id = uint256(keccak256(abi.encodePacked(ali, bob, aliChannelKey, bobChannelKey)));
 
         channels[id] = Channel({
             ali: ali,
+            aliChannelKey: aliChannelKey,
+            aliBalance: aliBalance,
             bob: bob,
+            bobChannelKey: bobChannelKey,
+            bobBalance: bobBalance,
             token: token,
             messageId: 0,
             stateHash: bytes32(0),
@@ -71,7 +84,7 @@ contract UqChannel {
             challengePeriod: block.timestamp + CHALLENGE_PERIOD
         });
 
-        emit ChannelCreated(id, ali.participant, bob.participant, ali.channelKey, bob.channelKey, ali.balance, bob.balance, address(token));
+        emit ChannelCreated(id, ali, bob, aliChannelKey, bobChannelKey, aliBalance, bobBalance, address(token));
         return id;
     }
 
@@ -95,15 +108,15 @@ contract UqChannel {
         bytes calldata bobSig
     ) external {
         Channel storage channel = channels[id];
-        require(newAliBalance + newBobBalance == channel.ali.balance + channel.bob.balance, "UqChannel: balances must add up");
+        require(newAliBalance + newBobBalance == channel.aliBalance + channel.bobBalance, "UqChannel: balances must add up");
         require(channel.messageId < messageId, "UqChannel: must advance the state");
 
         bytes memory message = abi.encodePacked(id, messageId, newAliBalance, newBobBalance, newState);
-        require(ECDSA.recover(keccak256(message), aliSig) == channel.ali.channelKey, "UqChannel: invalid ali signature");
-        require(ECDSA.recover(keccak256(message), bobSig) == channel.bob.channelKey, "UqChannel: invalid bob signature");
+        require(ECDSA.recover(keccak256(message), aliSig) == channel.aliChannelKey, "UqChannel: invalid ali signature");
+        require(ECDSA.recover(keccak256(message), bobSig) == channel.bobChannelKey, "UqChannel: invalid bob signature");
 
-        channel.ali.balance = newAliBalance;
-        channel.bob.balance = newBobBalance;
+        channel.aliBalance = newAliBalance;
+        channel.bobBalance = newBobBalance;
         channel.messageId = messageId;
         channel.stateHash = newState;
         channel.challengePeriod = block.timestamp + CHALLENGE_PERIOD;
@@ -115,8 +128,8 @@ contract UqChannel {
         Channel storage channel = channels[id];
         require(channel.challengePeriod < block.timestamp, "UqChannel: challenge period not over yet");
         
-        require(channel.token.transfer(channel.ali.participant, channel.ali.balance), "UqChannel: ali transfer failed");
-        require(channel.token.transfer(channel.bob.participant, channel.bob.balance), "UqChannel: bob transfer failed");
+        require(channel.token.transfer(channel.ali, channel.aliBalance), "UqChannel: ali transfer failed");
+        require(channel.token.transfer(channel.bob, channel.bobBalance), "UqChannel: bob transfer failed");
 
         emit ChannelClosed(id, channel.messageId, channel.stateHash, channel.ali.balance, channel.bob.balance);
     }

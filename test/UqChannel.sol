@@ -73,9 +73,6 @@ contract CounterTest is Test {
     }
 
     function test_makeChannel() public {
-        UqChannel.Participant memory aliPart = UqChannel.Participant(ali, aliChannelPubKey, 1000);
-        UqChannel.Participant memory bobPart = UqChannel.Participant(bob, bobChannelPubKey, 1000);
-
         uint256 correctId = uint256(keccak256(abi.encodePacked(ali, bob, aliChannelPubKey, bobChannelPubKey)));
 
         vm.expectEmit(true, true, false, true);
@@ -84,14 +81,12 @@ contract CounterTest is Test {
         emit Transfer(bob, address(uqChannel), 1000);
         vm.expectEmit(true, true, true, true);
         emit ChannelCreated(correctId, ali, bob, aliChannelPubKey, bobChannelPubKey, 1000, 1000, address(token));
-        uint256 actualId = uqChannel.makeChannel(aliPart, bobPart, IERC20(token));
+        uint256 actualId = uqChannel.makeChannel(ali, aliChannelPubKey, 1000, bob, bobChannelPubKey, 1000, IERC20(token));
         assertEq(actualId, correctId);
     }
 
     function test_updateChannelRevertsIfChannelBalancesDontAddUp() public {
-        UqChannel.Participant memory aliPart = UqChannel.Participant(ali, aliChannelPubKey, 1000);
-        UqChannel.Participant memory bobPart = UqChannel.Participant(bob, bobChannelPubKey, 1000);
-        uint256 actualId = uqChannel.makeChannel(aliPart, bobPart, IERC20(token));
+        uint256 actualId = uqChannel.makeChannel(ali, aliChannelPubKey, 1000, bob, bobChannelPubKey, 1000, IERC20(token));
 
         bytes32 digest = keccak256(abi.encodePacked(
             actualId,
@@ -111,9 +106,7 @@ contract CounterTest is Test {
     }
 
     function test_updateChannelFailsIfStateNotAdvanced() public {
-        UqChannel.Participant memory aliPart = UqChannel.Participant(ali, aliChannelPubKey, 1000);
-        UqChannel.Participant memory bobPart = UqChannel.Participant(bob, bobChannelPubKey, 1000);
-        uint256 actualId = uqChannel.makeChannel(aliPart, bobPart, IERC20(token));
+        uint256 actualId = uqChannel.makeChannel(ali, aliChannelPubKey, 1000, bob, bobChannelPubKey, 1000, IERC20(token));
 
         bytes32 digest = keccak256(abi.encodePacked(
             actualId,
@@ -133,9 +126,7 @@ contract CounterTest is Test {
     }
 
     function test_updateChannelRevertsIfSigsWrong() public {
-        UqChannel.Participant memory aliPart = UqChannel.Participant(ali, aliChannelPubKey, 1000);
-        UqChannel.Participant memory bobPart = UqChannel.Participant(bob, bobChannelPubKey, 1000);
-        uint256 actualId = uqChannel.makeChannel(aliPart, bobPart, IERC20(token));
+        uint256 actualId = uqChannel.makeChannel(ali, aliChannelPubKey, 1000, bob, bobChannelPubKey, 1000, IERC20(token));
 
         bytes32 digest = keccak256(abi.encodePacked(
             actualId,
@@ -171,9 +162,7 @@ contract CounterTest is Test {
     }
 
     function test_updateChannel() public {
-        UqChannel.Participant memory aliPart = UqChannel.Participant(ali, aliChannelPubKey, 1000);
-        UqChannel.Participant memory bobPart = UqChannel.Participant(bob, bobChannelPubKey, 1000);
-        uint256 actualId = uqChannel.makeChannel(aliPart, bobPart, IERC20(token));
+        uint256 actualId = uqChannel.makeChannel(ali, aliChannelPubKey, 1000, bob, bobChannelPubKey, 1000, IERC20(token));
 
         bytes32 digest = keccak256(abi.encodePacked(
             actualId,
@@ -193,15 +182,20 @@ contract CounterTest is Test {
         uqChannel.updateChannel(actualId, 1, 900, 1100, bytes32("foo"), aliSig, bobSig);
     
         (
-            UqChannel.Participant memory cAli,
-            UqChannel.Participant memory cBob,
+            address cAli,
+            address cAliChannelkey,
+            uint256 cAliBalance,
+            address cBob,
+            address cBobChannelKey,
+            uint256 cBobBalance,
             IERC20 cToken,
             uint256 cMessageId,
             bytes32 cStateHash,
             uint256 cChallengePeriod
         ) = uqChannel.channels(actualId);
-        assertEq(cAli.balance, 900);
-        assertEq(cBob.balance, 1100);
+    
+        assertEq(cAliBalance, 900);
+        assertEq(cBobBalance, 1100);
         assertEq(cMessageId, 1);
         assertEq(cStateHash, bytes32("foo"));
         assertEq(cChallengePeriod, block.timestamp + 5 minutes);
