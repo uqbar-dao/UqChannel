@@ -19,6 +19,15 @@ forge verify-contract \
     --watch \
     --etherscan-api-key $ETHERSCAN_API_KEY \
     --compiler-version v0.8.21+commit.d9974bed \
-    0x6E02370188a75c996afA16Ea6F3Cc38796EeEeFc \
+    0x84b39324a683C49d85e80F0206088373099Fc8DF \
     src/UqChannel.sol:UqChannel
+
+forge verify-contract \
+    --chain-id 11155111 \
+    --num-of-optimizations 200 \
+    --watch \
+    --etherscan-api-key $ETHERSCAN_API_KEY \
+    --compiler-version v0.8.21+commit.d9974bed \
+    0xaF33AB6a25D434d4b5EA6A2B3EB4488Fe64015a3 \
+    src/test/TestERC20.sol:TestERC20
 ```
