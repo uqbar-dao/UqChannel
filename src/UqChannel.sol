@@ -131,6 +131,6 @@ contract UqChannel {
         require(channel.token.transfer(channel.ali, channel.aliBalance), "UqChannel: ali transfer failed");
         require(channel.token.transfer(channel.bob, channel.bobBalance), "UqChannel: bob transfer failed");
 
-        emit ChannelClosed(id, channel.messageId, channel.stateHash, channel.ali.balance, channel.bob.balance);
+        emit ChannelClosed(id, channel.messageId, channel.stateHash, channel.aliBalance, channel.bobBalance);
     }
 }

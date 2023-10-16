@@ -164,7 +164,7 @@ contract CounterTest is Test {
     function test_updateChannel() public {
         uint256 actualId = uqChannel.makeChannel(ali, aliChannelPubKey, 1000, bob, bobChannelPubKey, 1000, IERC20(token));
 
-        bytes32 digest = keccak256(abi.encodePacked(
+        bytes32 digest1 = keccak256(abi.encodePacked(
             actualId,
             uint256(1),
             uint256(900),
@@ -172,8 +172,8 @@ contract CounterTest is Test {
             bytes32("foo")
         ));
 
-        (uint8 va, bytes32 ra, bytes32 sa) = vm.sign(aliChannelSecretKey, digest);
-        (uint8 vb, bytes32 rb, bytes32 sb) = vm.sign(bobChannelSecretKey, digest);
+        (uint8 va, bytes32 ra, bytes32 sa) = vm.sign(aliChannelSecretKey, digest1);
+        (uint8 vb, bytes32 rb, bytes32 sb) = vm.sign(bobChannelSecretKey, digest1);
         bytes memory aliSig = abi.encodePacked(ra, sa, va);
         bytes memory bobSig = abi.encodePacked(rb, sb, vb);
 
@@ -199,5 +199,94 @@ contract CounterTest is Test {
         assertEq(cMessageId, 1);
         assertEq(cStateHash, bytes32("foo"));
         assertEq(cChallengePeriod, block.timestamp + 5 minutes);
+
+        bytes32 digest2 = keccak256(abi.encodePacked(
+            actualId,
+            uint256(2),
+            uint256(800),
+            uint256(1200),
+            bytes32("bar")
+        ));
+
+        (uint8 va2, bytes32 ra2, bytes32 sa2) = vm.sign(aliChannelSecretKey, digest2);
+        (uint8 vb2, bytes32 rb2, bytes32 sb2) = vm.sign(bobChannelSecretKey, digest2);
+        bytes memory aliSig2 = abi.encodePacked(ra2, sa2, va2);
+        bytes memory bobSig2 = abi.encodePacked(rb2, sb2, vb2);
+
+        vm.expectEmit(true, false, false, true);
+        emit ChannelUpdated(actualId, 2, bytes32("bar"), 800, 1200, block.timestamp + 5 minutes);
+        uqChannel.updateChannel(actualId, 2, 800, 1200, bytes32("bar"), aliSig2, bobSig2);
+    
+        (
+            address cAli2,
+            address cAliChannelkey2,
+            uint256 cAliBalance2,
+            address cBob2,
+            address cBobChannelKey2,
+            uint256 cBobBalance2,
+            IERC20 cToken2,
+            uint256 cMessageId2,
+            bytes32 cStateHash2,
+            uint256 cChallengePeriod2
+        ) = uqChannel.channels(actualId);
+    
+        assertEq(cAliBalance2, 800);
+        assertEq(cBobBalance2, 1200);
+        assertEq(cMessageId2, 2);
+        assertEq(cStateHash2, bytes32("bar"));
+        assertEq(cChallengePeriod2, block.timestamp + 5 minutes);
+    }
+
+    function test_withdrawTokensFailsIfChallengePeriodNotOver() public {
+        uint256 actualId = uqChannel.makeChannel(ali, aliChannelPubKey, 1000, bob, bobChannelPubKey, 1000, IERC20(token));
+
+        bytes32 digest = keccak256(abi.encodePacked(
+            actualId,
+            uint256(1),
+            uint256(900),
+            uint256(1100),
+            bytes32("foo")
+        ));
+
+        (uint8 va, bytes32 ra, bytes32 sa) = vm.sign(aliChannelSecretKey, digest);
+        (uint8 vb, bytes32 rb, bytes32 sb) = vm.sign(bobChannelSecretKey, digest);
+        bytes memory aliSig = abi.encodePacked(ra, sa, va);
+        bytes memory bobSig = abi.encodePacked(rb, sb, vb);
+
+        uqChannel.updateChannel(actualId, 1, 900, 1100, bytes32("foo"), aliSig, bobSig);
+
+        vm.expectRevert("UqChannel: challenge period not over yet");
+        uqChannel.withdrawTokens(actualId);
+    }
+
+    function test_withdrawTokens() public {
+        uint256 actualId = uqChannel.makeChannel(ali, aliChannelPubKey, 1000, bob, bobChannelPubKey, 1000, IERC20(token));
+
+        bytes32 digest = keccak256(abi.encodePacked(
+            actualId,
+            uint256(1),
+            uint256(900),
+            uint256(1100),
+            bytes32("foo")
+        ));
+
+        (uint8 va, bytes32 ra, bytes32 sa) = vm.sign(aliChannelSecretKey, digest);
+        (uint8 vb, bytes32 rb, bytes32 sb) = vm.sign(bobChannelSecretKey, digest);
+        bytes memory aliSig = abi.encodePacked(ra, sa, va);
+        bytes memory bobSig = abi.encodePacked(rb, sb, vb);
+
+        uqChannel.updateChannel(actualId, 1, 900, 1100, bytes32("foo"), aliSig, bobSig);
+
+        vm.warp(block.timestamp + 5 minutes + 1);
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(uqChannel), ali, 900);
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(uqChannel), bob, 1100);
+        vm.expectEmit(true, false, false, true);
+        emit ChannelClosed(actualId, 1, bytes32("foo"), 900, 1100);
+        uqChannel.withdrawTokens(actualId);
+
+        assertEq(token.balanceOf(ali), 900);
+        assertEq(token.balanceOf(bob), 1100);
     }
 }
