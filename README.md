@@ -1,66 +1,24 @@
-## Foundry
+# UqChannel
+State channels used in Uqbar for offchain asset management. For example, when playing online poker:
+1. players establish a channel by depositing some amount of tokens using `makeChannel`
+2. players sign off on every statet change off-chain
+3. players close the channel by submitting the last updated state using `updateChannel`
+    - NOTE: the contract has no way of knowing whether this is actually the latest state. Someone can easily (maliciously) post an old state and attempt to withdraw early. To mitigate this, all withdraws are subject to a timelock of 5 minutes after the last state was submitted. So if Alice and Bob are playing a game, and they get to state `foo`, but Alice maliciously submits an older state `bar`, Bob has 5 minutes to submit `foo` using `updateChannel`, otherwise Alice will be able to withdraw the tokens according to the older `bar` state. For Alice to pull off this attack, she has to censor Bob's access to the chain for 5 minutes (extremely difficult) or somehow get rid of Bob's knowledge or the more recent `foo` state. Even if Alice DOSsed Bob's node, provided this data is backed up on the Uqbar network, this is prohibitively difficult for Alice to do this given even a short time period of 5 minutes.
+4. After the timelock has passed, players can withdraw with `withdrawTokens`
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+## Deployment
+```bash
+forge script script/UqChannel.sol --rpc-url https://eth-sepolia.g.alchemy.com/v2/W0nka5SiRCHASxyF6jzJ7HkQaMfnq4Mh -vvvv --via-ir --broadcast
 ```
 
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+## Verification
+```bash
+forge verify-contract \
+    --chain-id 11155111 \
+    --num-of-optimizations 200 \
+    --watch \
+    --etherscan-api-key $ETHERSCAN_API_KEY \
+    --compiler-version v0.8.21+commit.d9974bed \
+    0x6E02370188a75c996afA16Ea6F3Cc38796EeEeFc \
+    src/UqChannel.sol:UqChannel
 ```

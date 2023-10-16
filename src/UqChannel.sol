@@ -20,6 +20,8 @@ contract UqChannel {
 
     event ChannelUpdated(
         uint256 indexed id,
+        address indexed ali,
+        address indexed bob,
         uint256 messageId,
         bytes32 stateHash,
         uint256 aliBalance,
@@ -30,6 +32,8 @@ contract UqChannel {
     // other info should be indexed already, no reason to re-emit
     event ChannelClosed(
         uint256 indexed id,
+        address indexed ali,
+        address indexed bob,
         uint256 messageId,
         bytes32 stateHash,
         uint256 aliBalance,
@@ -121,7 +125,7 @@ contract UqChannel {
         channel.stateHash = newState;
         channel.challengePeriod = block.timestamp + CHALLENGE_PERIOD;
 
-        emit ChannelUpdated(id, messageId, newState, newAliBalance, newBobBalance, channel.challengePeriod);
+        emit ChannelUpdated(id, channel.ali, channel.bob, messageId, newState, newAliBalance, newBobBalance, channel.challengePeriod);
     }
 
     function withdrawTokens(uint256 id) external {
@@ -131,6 +135,6 @@ contract UqChannel {
         require(channel.token.transfer(channel.ali, channel.aliBalance), "UqChannel: ali transfer failed");
         require(channel.token.transfer(channel.bob, channel.bobBalance), "UqChannel: bob transfer failed");
 
-        emit ChannelClosed(id, channel.messageId, channel.stateHash, channel.aliBalance, channel.bobBalance);
+        emit ChannelClosed(id, channel.ali, channel.bob, channel.messageId, channel.stateHash, channel.aliBalance, channel.bobBalance);
     }
 }

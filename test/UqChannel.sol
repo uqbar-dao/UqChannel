@@ -22,6 +22,8 @@ contract CounterTest is Test {
 
     event ChannelUpdated(
         uint256 indexed id,
+        address indexed ali,
+        address indexed bob,
         uint256 messageId,
         bytes32 stateHash,
         uint256 aliBalance,
@@ -32,17 +34,13 @@ contract CounterTest is Test {
     // other info should be indexed already, no reason to re-emit
     event ChannelClosed(
         uint256 indexed id,
+        address indexed ali,
+        address indexed bob,
         uint256 messageId,
         bytes32 stateHash,
         uint256 aliBalance,
         uint256 bobBalance
     );
-
-    struct Participant {
-        address participant;
-        address channelKey;
-        uint256 balance;
-    }
 
     UqChannel public uqChannel;
     TestERC20 public token;
@@ -177,8 +175,8 @@ contract CounterTest is Test {
         bytes memory aliSig = abi.encodePacked(ra, sa, va);
         bytes memory bobSig = abi.encodePacked(rb, sb, vb);
 
-        vm.expectEmit(true, false, false, true);
-        emit ChannelUpdated(actualId, 1, bytes32("foo"), 900, 1100, block.timestamp + 5 minutes);
+        vm.expectEmit(true, true, true, true);
+        emit ChannelUpdated(actualId, ali, bob, 1, bytes32("foo"), 900, 1100, block.timestamp + 5 minutes);
         uqChannel.updateChannel(actualId, 1, 900, 1100, bytes32("foo"), aliSig, bobSig);
     
         (
@@ -213,8 +211,8 @@ contract CounterTest is Test {
         bytes memory aliSig2 = abi.encodePacked(ra2, sa2, va2);
         bytes memory bobSig2 = abi.encodePacked(rb2, sb2, vb2);
 
-        vm.expectEmit(true, false, false, true);
-        emit ChannelUpdated(actualId, 2, bytes32("bar"), 800, 1200, block.timestamp + 5 minutes);
+        vm.expectEmit(true, true, true, true);
+        emit ChannelUpdated(actualId, ali, bob, 2, bytes32("bar"), 800, 1200, block.timestamp + 5 minutes);
         uqChannel.updateChannel(actualId, 2, 800, 1200, bytes32("bar"), aliSig2, bobSig2);
     
         (
@@ -282,8 +280,8 @@ contract CounterTest is Test {
         emit Transfer(address(uqChannel), ali, 900);
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(uqChannel), bob, 1100);
-        vm.expectEmit(true, false, false, true);
-        emit ChannelClosed(actualId, 1, bytes32("foo"), 900, 1100);
+        vm.expectEmit(true, true, true, true);
+        emit ChannelClosed(actualId, ali, bob, 1, bytes32("foo"), 900, 1100);
         uqChannel.withdrawTokens(actualId);
 
         assertEq(token.balanceOf(ali), 900);
