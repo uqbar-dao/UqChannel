@@ -2,10 +2,11 @@
 pragma solidity ^0.8.13;
 
 import { IERC20 } from "forge-std/interfaces/IERC20.sol";
+import { ECDSA } from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 uint256 constant CHALLENGE_PERIOD = 5 minutes;
 
-contract Counter {
+contract UqChannel {
     event ChannelCreated(
         uint256 indexed id,
         address indexed ali,
@@ -66,10 +67,12 @@ contract Counter {
             token: token,
             messageId: 0,
             stateHash: bytes32(0),
+            // if no new messages are posted after the challenge period, both parties can withdraw
             challengePeriod: block.timestamp + CHALLENGE_PERIOD
         });
 
         emit ChannelCreated(id, ali.participant, bob.participant, ali.channelKey, bob.channelKey, ali.balance, bob.balance, address(token));
+        return id;
     }
 
     /// Every update of the channel is an attempt to close. We don't have a distinction between cooperative/uncooperative closes.
@@ -92,7 +95,11 @@ contract Counter {
         bytes calldata bobSig
     ) external {
         Channel storage channel = channels[id];
-        // TODO verify sigs
+
+        bytes memory message = abi.encodePacked(id, messageId, newAliBalance, newBobBalance, newState);
+        require(ECDSA.recover(keccak256(message), aliSig) == channel.ali.channelKey, "UqChannel: invalid ali signature");
+        require(ECDSA.recover(keccak256(message), bobSig) == channel.bob.channelKey, "UqChannel: invalid bob signature");
+
         require(channel.messageId < messageId, "UqChannel: must advance the state");
         
         channel.ali.balance = newAliBalance;
